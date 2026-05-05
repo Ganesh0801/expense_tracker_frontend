@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { TrendingUp, TrendingDown, ArrowLeftRight, Plus, Download, RefreshCw, Wallet, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Plus, Download, RefreshCw, AlertCircle, X } from 'lucide-react';
 import { Bar, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { dashboardRequest } from '../store/slices/dashboardSlice';
@@ -13,9 +13,49 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 const chartOptions = {
   responsive: true, maintainAspectRatio: false,
   plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 }, usePointStyle: true } }, tooltip: { backgroundColor: '#1e293b', titleColor: '#f1f5f9', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1 } },
-  scales: { x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }, y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => `₹${(v/1000).toFixed(0)}k` }, grid: { color: '#1e293b' } } }
+  scales: { x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }, y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => `₹${(v / 1000).toFixed(0)}k` }, grid: { color: '#1e293b' } } }
 };
 
+// ── Floating Action Button ──────────────────────────────────────────────────
+function FAB({ onClick }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+      {/* Sub-buttons */}
+      <div className={`flex flex-col items-end gap-2.5 transition-all duration-300 ${open ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+        <button onClick={() => { setOpen(false); onClick('earning'); }}
+          className="flex items-center gap-3 bg-slate-900 border border-green-500/40 text-white pl-4 pr-4 py-2.5 rounded-2xl shadow-xl shadow-black/30 hover:border-green-400/60 hover:bg-slate-800 transition-all group">
+          <span className="text-sm font-semibold text-slate-300 group-hover:text-white">Add Earning</span>
+          <div className="w-8 h-8 rounded-xl bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/30 flex-shrink-0">
+            <TrendingUp size={15} className="text-white" />
+          </div>
+        </button>
+        <button onClick={() => { setOpen(false); onClick('expense'); }}
+          className="flex items-center gap-3 bg-slate-900 border border-red-500/40 text-white pl-4 pr-4 py-2.5 rounded-2xl shadow-xl shadow-black/30 hover:border-red-400/60 hover:bg-slate-800 transition-all group">
+          <span className="text-sm font-semibold text-slate-300 group-hover:text-white">Add Expense</span>
+          <div className="w-8 h-8 rounded-xl bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 flex-shrink-0">
+            <TrendingDown size={15} className="text-white" />
+          </div>
+        </button>
+      </div>
+
+      {/* Backdrop */}
+      {open && <div className="fixed inset-0 -z-10" onClick={() => setOpen(false)} />}
+
+      {/* Main FAB */}
+      <button onClick={() => setOpen(!open)}
+        className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-300 
+          ${open
+            ? 'bg-slate-700 shadow-black/40 rotate-45'
+            : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/40 hover:scale-110 hover:shadow-indigo-500/50'}`}>
+        {open ? <X size={20} className="text-white" /> : <Plus size={22} className="text-white" />}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const dispatch = useDispatch();
   const { stats, loading } = useSelector(s => s.dashboard);
@@ -48,22 +88,23 @@ export default function DashboardPage() {
 
   const lineData = stats ? {
     labels: stats.sixMonthsData.map(d => d.month),
-    datasets: [
-      { label: 'Balance', data: stats.sixMonthsData.map(d => d.earnings - d.expenses), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#6366f1', pointRadius: 4 },
-    ]
+    datasets: [{ label: 'Balance', data: stats.sixMonthsData.map(d => d.earnings - d.expenses), borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', fill: true, tension: 0.4, pointBackgroundColor: '#6366f1', pointRadius: 4 }]
   } : null;
 
-  const fmt = (n) => `₹${(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  const fmt = n => `₹${(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   const balance = (stats?.totalEarnings || 0) - (stats?.totalExpenses || 0);
 
   if (loading && !stats) return (
     <div className="flex items-center justify-center h-64">
-      <div className="flex flex-col items-center gap-3"><RefreshCw size={32} className="text-indigo-400 animate-spin" /><p className="text-slate-400 text-sm">Loading dashboard...</p></div>
+      <div className="flex flex-col items-center gap-3">
+        <RefreshCw size={32} className="text-indigo-400 animate-spin" />
+        <p className="text-slate-400 text-sm">Loading dashboard...</p>
+      </div>
     </div>
   );
 
   return (
-    <div className="space-y-6 pb-6">
+    <div className="space-y-6 pb-24">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -82,46 +123,45 @@ export default function DashboardPage() {
 
       {/* 3 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Earnings Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-green-500/40 transition-all">
+        {/* Earnings */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-green-500/40 transition-all cursor-pointer"
+          onClick={() => setModal('earning')}>
           <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-green-500/15 flex items-center justify-center"><TrendingUp size={20} className="text-green-400" /></div>
-            <button onClick={() => setModal('earning')} className="w-8 h-8 rounded-lg bg-green-600 hover:bg-green-500 flex items-center justify-center transition-all shadow-lg shadow-green-500/20 group/btn">
+            <div className="w-8 h-8 rounded-lg bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/20 opacity-0 group-hover:opacity-100 transition-all">
               <Plus size={16} className="text-white" />
-            </button>
+            </div>
           </div>
           <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Total Earnings</p>
           <p className="text-green-400 text-2xl font-bold mt-1">{fmt(stats?.totalEarnings)}</p>
-          <p className="text-slate-500 text-xs mt-2">This month</p>
+          <p className="text-slate-500 text-xs mt-2">Click to add earning</p>
         </div>
 
-        {/* Expenses Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-red-500/40 transition-all">
+        {/* Expenses */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:border-red-500/40 transition-all cursor-pointer"
+          onClick={() => setModal('expense')}>
           <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex items-center justify-between mb-4">
             <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center"><TrendingDown size={20} className="text-red-400" /></div>
-            <button onClick={() => setModal('expense')} className="w-8 h-8 rounded-lg bg-red-600 hover:bg-red-500 flex items-center justify-center transition-all shadow-lg shadow-red-500/20">
+            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center shadow-lg shadow-red-500/20 opacity-0 group-hover:opacity-100 transition-all">
               <Plus size={16} className="text-white" />
-            </button>
+            </div>
           </div>
-          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Spent This Month</p>
+          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Total Expenses</p>
           <p className="text-red-400 text-2xl font-bold mt-1">{fmt(stats?.totalExpenses)}</p>
-          <p className="text-slate-500 text-xs mt-2">This month</p>
+          <p className="text-slate-500 text-xs mt-2">Click to add expense</p>
         </div>
 
-        {/* Balance Card */}
+        {/* Balance */}
         <div className={`bg-slate-900 border rounded-2xl p-5 relative overflow-hidden group transition-all ${balance >= 0 ? 'border-slate-800 hover:border-indigo-500/40' : 'border-red-900/50'}`}>
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex items-center justify-between mb-4">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${balance >= 0 ? 'bg-indigo-500/15' : 'bg-red-500/15'}`}>
               <Wallet size={20} className={balance >= 0 ? 'text-indigo-400' : 'text-red-400'} />
             </div>
-            <button onClick={() => setModal('transaction')} className="w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center transition-all shadow-lg shadow-indigo-500/20">
-              <ArrowLeftRight size={14} className="text-white" />
-            </button>
           </div>
-          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">{balance >= 0 ? 'Net Profit' : 'Net Loss'}</p>
+          <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">{balance >= 0 ? 'Net Savings' : 'Net Loss'}</p>
           <p className={`text-2xl font-bold mt-1 ${balance >= 0 ? 'text-indigo-400' : 'text-red-400'}`}>{fmt(Math.abs(balance))}</p>
           <div className="flex items-center gap-1 mt-2">
             {balance >= 0
@@ -131,15 +171,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Charts Row */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Bar Chart */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <h3 className="text-white font-semibold text-sm mb-1">Earnings vs Expenses</h3>
           <p className="text-slate-400 text-xs mb-4">Last 6 months comparison</p>
           <div className="h-52">{chartData && <Bar data={chartData} options={chartOptions} />}</div>
         </div>
-        {/* Line Chart */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <h3 className="text-white font-semibold text-sm mb-1">Balance Trend</h3>
           <p className="text-slate-400 text-xs mb-4">Monthly profit/loss trend</p>
@@ -147,9 +185,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Category Breakdown + Recent Transactions */}
+      {/* Categories + Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Categories */}
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <h3 className="text-white font-semibold text-sm mb-4">Top Expense Categories</h3>
           <div className="space-y-3">
@@ -172,10 +209,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Transactions */}
         <div className="lg:col-span-3 bg-slate-900 border border-slate-800 rounded-2xl p-5">
           <h3 className="text-white font-semibold text-sm mb-4">Recent Transactions</h3>
-          <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {stats?.recentTransactions?.length ? stats.recentTransactions.map(tx => (
               <div key={tx._id} className="flex items-center gap-3 p-3 bg-slate-800/60 rounded-xl hover:bg-slate-800 transition-all">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${tx.type === 'earning' ? 'bg-green-500/15' : 'bg-red-500/15'}`}>
@@ -194,18 +230,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Modals */}
-      {modal && modal !== 'transaction' && <TransactionModal type={modal} onClose={() => setModal(null)} />}
-      {modal === 'transaction' && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-xs space-y-3">
-            <h3 className="text-white font-bold text-center">Add Transaction</h3>
-            <button onClick={() => setModal('earning')} className="w-full py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all"><TrendingUp size={18} /> Add Earning</button>
-            <button onClick={() => setModal('expense')} className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all"><TrendingDown size={18} /> Add Expense</button>
-            <button onClick={() => setModal(null)} className="w-full py-2 text-slate-400 hover:text-white text-sm transition-colors">Cancel</button>
-          </div>
-        </div>
-      )}
+      {/* Floating Action Button */}
+      <FAB onClick={(type) => setModal(type)} />
+
+      {/* Modal */}
+      {modal && <TransactionModal type={modal} onClose={() => setModal(null)} />}
     </div>
   );
 }
